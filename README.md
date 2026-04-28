@@ -71,3 +71,5 @@ export default defineConfig([
   },
 ])
 ```
+src/lib/convertToFlow.ts终端执行安装
+npm i --save-dev @types/dagre

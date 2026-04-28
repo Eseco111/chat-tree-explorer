@@ -3,6 +3,7 @@ import type { ConversationTree } from '../types';
 import {
   createTree,
   appendToCurrentBranch,
+  createBranchFrom,   // 确保已导入
   getPathTo,
 } from '../lib/tree';
 import { saveTree, loadTree } from '../lib/storage';
@@ -27,7 +28,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   selectedNodeId: null,
 
   setViewMode: (mode) => set({ viewMode: mode }),
-
   selectNode: (id) => set({ selectedNodeId: id }),
 
   sendMessage: (content) => {
@@ -37,8 +37,16 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     saveTree(newTree);
   },
 
-  editMessage: (_nodeId: string, _newContent: string) => {
-    console.warn('editMessage 尚未实现', _nodeId, _newContent);
+  editMessage: (nodeId, newContent) => {
+    const { tree } = get();
+    const node = tree.nodes[nodeId];
+    if (!node || node.role !== 'user') {
+      console.warn('只能编辑用户消息');
+      return;
+    }
+    const newTree = createBranchFrom(tree, nodeId, newContent);
+    set({ tree: newTree });
+    saveTree(newTree);
   },
 
   switchToNode: (nodeId) => {

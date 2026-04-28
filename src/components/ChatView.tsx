@@ -19,7 +19,6 @@ export default function ChatView() {
       (n) => n && (n.role === 'user' || n.role === 'assistant') && n.content !== undefined
     );
 
-  // 提取最后一条消息的内容，用作依赖
   const lastContent = currentMessages[currentMessages.length - 1]?.content ?? '';
 
   useEffect(() => {
@@ -48,10 +47,18 @@ export default function ChatView() {
     }
   };
 
-  const handleEditSave = (nodeId: string, newContent: string) => {
+  // 改进点：异步保存编辑，内容无变化时不创建分支，编辑后自动触发生成
+  const handleEditSave = async (nodeId: string, newContent: string) => {
+    const trimmed = newContent.trim();
+    // 如果编辑后内容为空，或与原内容完全一致，则放弃修改
+    if (!trimmed || trimmed === tree.nodes[nodeId]?.content) {
+      setEditingNodeId(null);
+      return;
+    }
     setEditingNodeId(null);
-    if (newContent.trim() === '') return;
-    editMessage(nodeId, newContent.trim());
+    editMessage(nodeId, trimmed);
+    // 关键：创建新分支后立刻生成 AI 回复，且复用现有生成逻辑
+    await generate();
   };
 
   return (

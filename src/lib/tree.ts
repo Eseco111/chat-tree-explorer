@@ -83,8 +83,25 @@ export function createBranchFrom(
   nodeId: string,
   newUserContent: string
 ): ConversationTree {
-  const newTree = addNode(tree, nodeId, 'user', newUserContent);
-  const newNodeId = newTree.nodes[nodeId].childrenIds.slice(-1)[0];
+  const node = tree.nodes[nodeId];
+  if (!node || node.role !== 'user') {
+    // 如果不是用户节点，无法插中，原样返回
+    return tree;
+  }
+
+  const parentId = node.parentId;
+  if (!parentId || !tree.nodes[parentId]) {
+    // 没有父节点（例如根节点的直接子节点），无法安全分叉
+    return tree;
+  }
+
+  // 在父节点下创建新用户节点（而不是在 nodeId 下）
+  const newTree = addNode(tree, parentId, 'user', newUserContent);
+  const newNodeId =
+    newTree.nodes[parentId].childrenIds[
+      newTree.nodes[parentId].childrenIds.length - 1
+    ];
+
   return {
     ...newTree,
     currentPath: getPathTo(newTree, newNodeId),

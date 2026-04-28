@@ -41,6 +41,12 @@ export default function MessageItem({
             className="w-full bg-white text-gray-900 p-1 rounded text-sm"
             defaultValue={content}
             onBlur={(e) => onSaveEdit?.(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onSaveEdit?.(e.currentTarget.value);
+              }
+            }}
             autoFocus
           />
         ) : (
@@ -52,3 +58,4 @@ export default function MessageItem({
     </div>
   );
 }
+// 在 textarea 中添加 onKeyDown

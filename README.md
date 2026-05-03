@@ -71,8 +71,18 @@ export default defineConfig([
   },
 ])
 ```
-src/lib/convertToFlow.ts终端执行安装
-npm i --save-dev @types/dagre
+
+安装必要依赖：
+npm install react react-dom reactflow openai uuid zustand dagre react-markdown
+npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre @vitejs/plugin-react vite tailwindcss postcss autoprefixer @tailwindcss/typography
 
 运行：
 npm run dev
+
+git add .
+git commit -m "feat: the final 1.0 version"
+
+
+改用模型则修改
+src/lib/api.ts
+sre/components/ApiKeySetup.tsx

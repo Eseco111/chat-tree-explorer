@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown';
+
 interface MessageItemProps {
   role: 'user' | 'assistant';
   content: string;
@@ -50,7 +52,9 @@ export default function MessageItem({
             autoFocus
           />
         ) : (
-          <p className="text-sm whitespace-pre-wrap">{content}</p>
+          <div className="text-sm prose prose-sm max-w-none dark:prose-invert text-left">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
         )}
 
         <div className="text-right text-xs opacity-50 mt-1">{timeStr}</div>
@@ -58,4 +62,3 @@ export default function MessageItem({
     </div>
   );
 }
-// 在 textarea 中添加 onKeyDown

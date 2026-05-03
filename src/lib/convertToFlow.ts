@@ -3,6 +3,20 @@ import { MarkerType } from 'reactflow';
 import type { Node, Edge } from 'reactflow';
 import type { ConversationTree } from '../types';
 
+
+interface NodeDisplayData {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  isCurrentPath: boolean;
+  isLeaf: boolean;
+  childrenIds: string[];
+}
+
+
+
+
 export function convertToFlow(
   tree: ConversationTree,
   currentPathIds: string[]
@@ -20,15 +34,8 @@ export function convertToFlow(
 
   const pathSet = new Set(currentPathIds);
   // 用映射表存储每个节点的自定义数据，不污染 dagre 节点
-  const nodeDataMap: Record<string, {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-    isCurrentPath: boolean;
-  }> = {};
+  const nodeDataMap: Record<string, NodeDisplayData> = {}; // 使用新接口
 
-  // 1. 添加节点（跳过根占位节点）
   for (const nodeId of Object.keys(tree.nodes)) {
     const node = tree.nodes[nodeId];
     if (node.content === '' && node.parentId === null) continue;
@@ -40,6 +47,8 @@ export function convertToFlow(
       content: node.content,
       timestamp: node.timestamp,
       isCurrentPath: isOnPath,
+      isLeaf: (node.childrenIds ?? []).length === 0,
+      childrenIds: node.childrenIds ?? [],
     };
   }
 
@@ -68,7 +77,7 @@ export function convertToFlow(
     nodes.push({
       id: nodeId,
       type: 'customNode',
-      position: { x: x - 20, y: y - 20 }, // 节点本身宽高40，做居中偏移
+      position: { x: x - 20, y: y - 20 },
       data: nodeDataMap[nodeId],
     });
   }

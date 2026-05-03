@@ -8,22 +8,53 @@ interface CustomNodeData {
   content: string;
   timestamp: number;
   isCurrentPath: boolean;
+  isLeaf: boolean;
+  childrenIds?: string[];
+}
+
+// 去Markdown标记（保留中文和字母数字等）
+function stripMarkdown(text: string): string {
+  return text
+    // 移除 Markdown 图片和链接语法
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
+    // 移除行首的标题标记（#、##、### 等）
+    .replace(/^\s*#{1,6}\s+/gm, '')
+    // 移除常见的 emphasis 标记（**，__，*，_）
+    .replace(/(\*{1,3}|_{1,3})/g, '')
+    // 移除行内代码和代码块标记
+    .replace(/`+/g, '')
+    // 移除块引用标记 >
+    .replace(/^\s*>\s+/gm, '')
+    // 移除无序列表标记 - + *
+    .replace(/^\s*[-+*]\s+/gm, '')
+    // 移除数字列表标记 1.
+    .replace(/^\s*\d+\.\s+/gm, '')
+    // 移除水平分割线
+    .replace(/^\s*[-*_]{3,}\s*$/gm, '')
+    // 将连续空白字符压缩为一个空格
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export default function CustomNode({ data }: { data: CustomNodeData }) {
   const switchToNode = useTreeStore((s) => s.switchToNode);
-  const [isHovered, setIsHovered] = useState(false); // 控制预览卡片的显隐
+  const [isHovered, setIsHovered] = useState(false);
 
+  // 预览内容：去除 Markdown 格式，限制长度
   const preview = data.content
-    ? data.content.slice(0, 30) + (data.content.length > 30 ? '...' : '')
+    ? (() => {
+        const cleaned = stripMarkdown(data.content);
+        return cleaned.length > 30 ? cleaned.slice(0, 30) + '...' : cleaned;
+      })()
     : '(空)';
 
   const isUser = data.role === 'user';
+  const showActionButton = isUser || data.isLeaf;
 
   return (
-    // 通过 onMouseEnter/Leave 控制悬停状态
-    <div 
-      className="relative overflow-visible group" 
+    <div
+      className="relative overflow-visible group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -42,14 +73,13 @@ export default function CustomNode({ data }: { data: CustomNodeData }) {
           {isUser ? '👤' : '🤖'}
         </div>
 
-        {/* 用户节点旁的“从此对话”按钮，保留原生 group-hover 效果 */}
-        {isUser && (
+        {showActionButton && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               switchToNode(data.id);
             }}
-            title="从这里开始对话"
+            title={isUser ? '从这里开始对话' : '继续对话'}
             className="
               w-5 h-5 rounded-full bg-white border border-gray-300 
               flex items-center justify-center text-xs 
@@ -61,17 +91,8 @@ export default function CustomNode({ data }: { data: CustomNodeData }) {
         )}
       </div>
 
-      {/* 预览卡片：用 NodeToolbar 避免遮挡，并由 isHovered 控制显示 */}
-      <NodeToolbar
-        isVisible={isHovered}
-        position={Position.Right}
-        offset={10}
-      >
-        <div
-          className="w-44 p-2 bg-gray-800 text-white text-xs rounded shadow-lg"
-          style={{ whiteSpace: 'normal' }}
-          
-        >
+      <NodeToolbar isVisible={isHovered} position={Position.Right} offset={10}>
+        <div className="w-44 p-2 bg-gray-800 text-white text-xs rounded shadow-lg" style={{ whiteSpace: 'normal' }}>
           <div className="font-bold mb-1">{isUser ? '你' : 'AI'}</div>
           <div className="break-words">{preview}</div>
           <div className="text-gray-400 mt-1">

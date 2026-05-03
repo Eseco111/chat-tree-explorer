@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
 import ReactFlow, {
-  Background, Controls, MiniMap, useNodesState, useEdgesState,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  type ReactFlowInstance,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import CustomNode from './CustomNode';
@@ -13,23 +18,27 @@ export default function MapView() {
   const tree = useTreeStore((s) => s.tree);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
-  // 使用 ref 保存上一次的树节点ID集合
-  const prevNodeIdsRef = useRef<string[]>([]);
+  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
   useEffect(() => {
-    const currentIds = Object.keys(tree.nodes).sort();
-    const prevIds = prevNodeIdsRef.current;
-    
-    // 深度比较节点ID集合，避免不必要更新
-    if (
-      prevIds.length !== currentIds.length ||
-      !currentIds.every((id, i) => id === prevIds[i])
-    ) {
-      prevNodeIdsRef.current = currentIds;
-      const initialData = convertToFlow(tree, tree.currentPath);
-      setNodes(initialData.nodes);
-      setEdges(initialData.edges);
+    const { nodes: newNodes, edges: newEdges } = convertToFlow(
+      tree,
+      tree.currentPath
+    );
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    // 聚焦到当前路径最后一个节点
+    const lastPathNodeId = tree.currentPath[tree.currentPath.length - 1];
+    const lastNode = newNodes.find((n) => n.id === lastPathNodeId);
+    if (lastNode && reactFlowInstanceRef.current) {
+      setTimeout(() => {
+        reactFlowInstanceRef.current?.setCenter(
+          lastNode.position.x + 120,
+          lastNode.position.y,
+          { zoom: 1.2, duration: 400 }
+        );
+      }, 100);
     }
   }, [tree, setNodes, setEdges]);
 
@@ -41,7 +50,9 @@ export default function MapView() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        fitView
+        onInit={(instance) => {
+          reactFlowInstanceRef.current = instance;
+        }}
         attributionPosition="bottom-left"
       >
         <Background />

@@ -8,3 +8,13 @@
 安装依赖：npm install
 npm install react react-dom reactflow openai uuid zustand dagre react-markdown
 npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre @vitejs/plugin-react vite tailwindcss postcss autoprefixer @tailwindcss/typography
+
+
+
+提交
+git add .
+git commit -m "更新项目说明文档"
+查看所有版本
+git log --oneline --graph --all
+查看目标版本
+git checkout a1b2c3d

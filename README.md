@@ -18,3 +18,5 @@ git commit -m "更新项目说明文档"
 git log --oneline --graph --all
 查看目标版本
 git checkout a1b2c3d
+回到版本
+git switch main  

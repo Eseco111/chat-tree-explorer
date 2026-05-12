@@ -13,7 +13,7 @@ npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre
 
 提交
 git add .
-git commit -m "更新项目说明文档"
+git commit -m "final 1.1"
 查看所有版本
 git log --oneline --graph --all
 查看目标版本

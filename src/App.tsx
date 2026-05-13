@@ -3,41 +3,38 @@ import ChatView from './components/ChatView';
 import MapView from './components/MapView';
 import ViewSwitcher from './components/ViewSwitcher';
 import ApiKeySetup from './components/ApiKeySetup';
+import Sidebar from './components/Sidebar';
 
 function App() {
   const viewMode = useTreeStore((s) => s.viewMode);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="flex h-screen bg-gray-100">
       <ApiKeySetup />
-      <header className="bg-white shadow p-4 text-center relative">
-        <h1 className="text-xl font-bold text-gray-800">对话树浏览器 MVP</h1>
-      </header>
-      <main className="flex-1 p-4 flex justify-center">
-        <div className="w-full max-w-4xl" style={{ height: 'calc(100vh - 8rem)' }}>
-          {/* 聊天视图始终挂载，通过 visibility 切换 */}
-          <div
-            style={{
-              height: '100%',
-              visibility: viewMode === 'chat' ? 'visible' : 'hidden',
-              position: viewMode === 'chat' ? 'relative' : 'absolute',
-            }}
-          >
-            <ChatView />
+      {/* 左侧边栏 */}
+      <Sidebar />
+
+      {/* 右侧主区域 */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="bg-white shadow p-3 text-center relative flex-shrink-0">
+          <h1 className="text-lg font-bold text-gray-800">对话树浏览器 MVP</h1>
+          {/* 视图切换按钮放到标题栏右侧 */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+            <ViewSwitcher />
           </div>
-          {/* 全景图始终挂载 */}
-          <div
-            style={{
-              height: '100%',
-              visibility: viewMode === 'map' ? 'visible' : 'hidden',
-              position: viewMode === 'map' ? 'relative' : 'absolute',
-            }}
-          >
-            <MapView />
+        </header>
+        <main className="flex-1 p-4 overflow-hidden">
+          <div className="w-full max-w-4xl mx-auto h-full">
+            {/* 用 CSS 切换而非常规挂载，以保持 MapView 状态 */}
+            <div style={{ display: viewMode === 'chat' ? 'block' : 'none', height: '100%' }}>
+              <ChatView />
+            </div>
+            <div style={{ display: viewMode === 'map' ? 'block' : 'none', height: '100%' }}>
+              <MapView />
+            </div>
           </div>
-        </div>
-      </main>
-      <ViewSwitcher />
+        </main>
+      </div>
     </div>
   );
 }

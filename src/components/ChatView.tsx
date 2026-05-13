@@ -6,8 +6,6 @@ import MessageList from './MessageList';
 export default function ChatView() {
   const [input, setInput] = useState('');
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [showApiModal, setShowApiModal] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const tree = useTreeStore((s) => s.tree);
@@ -60,33 +58,8 @@ export default function ChatView() {
     await generate();
   };
 
-  // 保存新的 API Key
-  const handleApiSave = () => {
-    if (apiKeyInput.trim()) {
-      localStorage.setItem('deepseek-api-key', apiKeyInput.trim());
-      // 重新初始化 API 客户端
-      import('../lib/api').then(({ initFromStorage }) => {
-        initFromStorage();
-      });
-      setShowApiModal(false);
-      setApiKeyInput('');
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto bg-white rounded shadow relative">
-      {/* 顶部工具栏 */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <span className="text-sm font-semibold text-gray-600">当前对话</span>
-        <button
-          onClick={() => setShowApiModal(true)}
-          className="text-gray-400 hover:text-gray-600 transition"
-          title="修改 API Key"
-        >
-          ⚙️输入新的 API Key
-        </button>
-      </div>
-
+    <div className="flex flex-col h-full max-w-2xl mx-auto bg-white rounded shadow">
       <MessageList
         messages={currentMessages}
         editingNodeId={editingNodeId}
@@ -113,36 +86,6 @@ export default function ChatView() {
           发送
         </button>
       </div>
-
-      {/* 修改 API Key 弹窗 */}
-      {showApiModal && (
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-80">
-            <h3 className="text-lg font-bold mb-2">修改 DeepSeek API Key</h3>
-            <input
-              type="password"
-              className="w-full border p-2 rounded mb-3 text-sm"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder="输入新的 API Key"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowApiModal(false)}
-                className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleApiSave}
-                className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

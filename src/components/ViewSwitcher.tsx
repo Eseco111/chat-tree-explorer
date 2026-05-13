@@ -9,10 +9,10 @@ export default function ViewSwitcher() {
   return (
     <button
       onClick={toggle}
-      className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
+      className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition"
       title={viewMode === 'chat' ? '切换到全景图' : '切换到对话'}
     >
-      {viewMode === 'chat' ? '🗺️' : '💬'}
+      {viewMode === 'chat' ? '🗺️ 全景图' : '💬 对话'}
     </button>
   );
 }

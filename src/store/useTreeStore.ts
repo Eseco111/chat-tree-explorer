@@ -138,6 +138,27 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const state = get();
     const newTree = appendToCurrentBranch(state.tree, 'user', content);
     const newTrees = { ...state.trees, [state.activeId]: newTree };
+
+    // 如果当前对话标题为“新对话”且这是第一条用户消息，则自动设置为用户消息前20字
+    const currentMeta = state.meta[state.activeId];
+    if (currentMeta && currentMeta.title === '新对话') {
+      // 判断是否是第一条用户消息（通过检查当前树中是否有其他用户节点）
+      const userMessageCount = Object.values(newTree.nodes).filter(
+        (n) => n.role === 'user'
+      ).length;
+      if (userMessageCount <= 1) {
+        const newMeta = {
+          ...state.meta,
+          [state.activeId]: {
+            ...currentMeta,
+            title: content.slice(0, 20) + (content.length > 20 ? '...' : ''),
+          },
+        };
+        set({ trees: newTrees, tree: newTree, meta: newMeta });
+        persistState({ ...state, trees: newTrees, tree: newTree, meta: newMeta });
+        return;
+      }
+    }
     set({ trees: newTrees, tree: newTree });
     persistState({ ...state, trees: newTrees, tree: newTree });
   },

@@ -3,6 +3,6 @@ import type { useTreeStore } from '../store/useTreeStore';
 
 declare global {
   interface Window {
-    __store?: typeof useTreeStore; // 可选，用于调试
+    __store?: typeof useTreeStore;
   }
 }

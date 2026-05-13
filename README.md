@@ -13,10 +13,13 @@ npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre
 
 提交
 git add .
-git commit -m "final 1.1"
+git commit -m "final 1.2"
 查看所有版本
 git log --oneline --graph --all
 查看目标版本
 git checkout a1b2c3d
 回到版本
 git switch main  
+
+
+main.tsx 临时暴露store

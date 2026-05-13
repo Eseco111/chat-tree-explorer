@@ -1,8 +1,8 @@
+import { useTreeStore } from './store/useTreeStore';
 import ChatView from './components/ChatView';
 import MapView from './components/MapView';
 import ViewSwitcher from './components/ViewSwitcher';
 import ApiKeySetup from './components/ApiKeySetup';
-import { useTreeStore } from './store/useTreeStore';
 
 function App() {
   const viewMode = useTreeStore((s) => s.viewMode);
@@ -14,8 +14,27 @@ function App() {
         <h1 className="text-xl font-bold text-gray-800">对话树浏览器 MVP</h1>
       </header>
       <main className="flex-1 p-4 flex justify-center">
-        <div className="w-full max-w-4xl h-[calc(100vh-8rem)]">
-          {viewMode === 'chat' ? <ChatView /> : <MapView />}
+        <div className="w-full max-w-4xl" style={{ height: 'calc(100vh - 8rem)' }}>
+          {/* 聊天视图始终挂载，通过 visibility 切换 */}
+          <div
+            style={{
+              height: '100%',
+              visibility: viewMode === 'chat' ? 'visible' : 'hidden',
+              position: viewMode === 'chat' ? 'relative' : 'absolute',
+            }}
+          >
+            <ChatView />
+          </div>
+          {/* 全景图始终挂载 */}
+          <div
+            style={{
+              height: '100%',
+              visibility: viewMode === 'map' ? 'visible' : 'hidden',
+              position: viewMode === 'map' ? 'relative' : 'absolute',
+            }}
+          >
+            <MapView />
+          </div>
         </div>
       </main>
       <ViewSwitcher />

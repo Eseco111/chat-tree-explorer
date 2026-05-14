@@ -9,29 +9,20 @@ export default function ModelSetupModal() {
   const addModel = useTreeStore((s) => s.addModel);
   const setActiveModel = useTreeStore((s) => s.setActiveModel);
 
-  const [form, setForm] = useState<{
-    name: string;
-    baseURL: string;
-    apiKey: string;
-    model: string;
-    provider: ModelConfig['provider'];
-  }>({
+  const [form, setForm] = useState({
     name: '',
     baseURL: '',
     apiKey: '',
     model: '',
-    provider: 'custom',
   });
   const [error, setError] = useState('');
 
-  // 如果已有可用模型，不显示引导
   if (Object.keys(models).length > 0 && activeModelId && models[activeModelId]?.apiKey) {
     return null;
   }
 
   const handleSave = () => {
-    const { name, baseURL, apiKey, model, provider } = form;
-    // 必填验证
+    const { name, baseURL, apiKey, model } = form;
     if (!name.trim() || !baseURL.trim() || !apiKey.trim() || !model.trim()) {
       setError('请填写所有必填字段');
       return;
@@ -41,7 +32,14 @@ export default function ModelSetupModal() {
       return;
     }
     const id = `model-${Date.now()}`;
-    const newModel: ModelConfig = { id, name, provider, baseURL, apiKey, model };
+    const newModel: ModelConfig = {
+      id,
+      name,
+      provider: 'custom',   // 固定为 custom
+      baseURL,
+      apiKey,
+      model,
+    };
     addModel(newModel);
     setActiveModel(id);
     createClient(newModel);
@@ -64,20 +62,6 @@ export default function ModelSetupModal() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              提供商标识 <span className="text-gray-400">（可随意选择）</span>
-            </label>
-            <select
-              className="w-full border rounded px-2 py-1 text-sm"
-              value={form.provider}
-              onChange={(e) => setForm({ ...form, provider: e.target.value as ModelConfig['provider'] })}
-            >
-              <option value="deepseek">DeepSeek</option>
-              <option value="openai">OpenAI</option>
-              <option value="custom">自定义</option>
-            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">

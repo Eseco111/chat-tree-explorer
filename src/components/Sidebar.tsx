@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { useTreeStore } from '../store/useTreeStore';
+import { exportConversation, importConversation } from '../lib/exportImport';
 import { useState } from 'react';
 
 export default function Sidebar() {
@@ -9,14 +11,13 @@ export default function Sidebar() {
   const createConversation = useTreeStore((s) => s.createConversation);
 
   const [search, setSearch] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 过滤对话列表
   const conversationIds = Object.keys(meta).filter((id) => {
     if (!search.trim()) return true;
     return meta[id].title.toLowerCase().includes(search.toLowerCase());
   });
-
-  // 按创建时间倒序排列
   conversationIds.sort((a, b) => meta[b].createdAt - meta[a].createdAt);
 
   const handleNew = () => {
@@ -28,6 +29,28 @@ export default function Sidebar() {
     if (confirm('确定删除此对话？')) {
       deleteConversation(id);
     }
+  };
+
+  const handleExport = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    exportConversation(id, meta[id]);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const success = await importConversation(file);
+    if (success) {
+      alert('导入成功！');
+    } else {
+      alert('导入失败，请检查文件格式。');
+    }
+    // 清空 input，允许重复导入同一文件
+    e.target.value = '';
   };
 
   return (
@@ -72,22 +95,46 @@ export default function Sidebar() {
                     {new Date(meta[id].createdAt).toLocaleDateString()}
                   </div>
                 </div>
-                <button
-                  onClick={(e) => handleDelete(e, id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition ml-2"
-                  title="删除对话"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                  {/* 导出按钮 */}
+                  <button
+                    onClick={(e) => handleExport(e, id)}
+                    className="text-gray-400 hover:text-blue-400"
+                    title="导出对话"
+                  >
+                    ⬇
+                  </button>
+                  {/* 删除按钮 */}
+                  <button
+                    onClick={(e) => handleDelete(e, id)}
+                    className="text-gray-400 hover:text-red-400"
+                    title="删除对话"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             );
           })
         )}
       </div>
 
-      {/* 底部信息 */}
-      <div className="p-2 border-t border-gray-700 text-xs text-gray-500 text-center">
-        对话树浏览器 v2.0
+      {/* 底部区域：导入按钮 + 版本信息 */}
+      <div className="p-2 border-t border-gray-700 text-xs text-gray-500">
+        <input
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+        <button
+          onClick={handleImportClick}
+          className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm transition mb-1"
+        >
+          导入对话
+        </button>
+        <div className="text-center">对话树浏览器 v2.0</div>
       </div>
     </div>
   );

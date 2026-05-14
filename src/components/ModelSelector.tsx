@@ -8,7 +8,6 @@ type FormData = {
   baseURL: string;
   apiKey: string;
   model: string;
-  provider: ModelConfig['provider'];
 };
 
 export default function ModelSelector() {
@@ -26,7 +25,6 @@ export default function ModelSelector() {
     baseURL: '',
     apiKey: '',
     model: '',
-    provider: 'custom',
   });
   const [error, setError] = useState('');
 
@@ -34,7 +32,7 @@ export default function ModelSelector() {
   const activeModel = models[activeModelId];
 
   const resetForm = () => {
-    setForm({ name: '', baseURL: '', apiKey: '', model: '', provider: 'custom' });
+    setForm({ name: '', baseURL: '', apiKey: '', model: '' });
     setError('');
   };
 
@@ -45,7 +43,6 @@ export default function ModelSelector() {
       baseURL: model.baseURL,
       apiKey: model.apiKey,
       model: model.model,
-      provider: model.provider,
     });
     setError('');
     setShowAdd(false);
@@ -67,7 +64,11 @@ export default function ModelSelector() {
   const handleAdd = () => {
     if (!validate()) return;
     const id = `model-${Date.now()}`;
-    const newModel: ModelConfig = { ...form, id };
+    const newModel: ModelConfig = {
+      ...form,
+      id,
+      provider: 'custom',   // 固定为 custom
+    };
     addModel(newModel);
     setActiveModel(id);
     createClient(newModel);
@@ -77,9 +78,14 @@ export default function ModelSelector() {
 
   const handleEdit = () => {
     if (!editModelId || !validate()) return;
-    updateModel(editModelId, form);
+    const updatedModel: ModelConfig = {
+      ...form,
+      id: editModelId,
+      provider: 'custom',
+    };
+    updateModel(editModelId, updatedModel);
     if (editModelId === activeModelId) {
-      createClient({ ...models[editModelId], ...form });
+      createClient(updatedModel);
     }
     setEditModelId(null);
     resetForm();
@@ -131,7 +137,6 @@ export default function ModelSelector() {
         </>
       )}
 
-      {/* 添加 / 编辑弹窗 */}
       {(showAdd || editModelId) && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => { setShowAdd(false); setEditModelId(null); }} />
@@ -142,15 +147,6 @@ export default function ModelSelector() {
                 <label className="text-xs">名称 <span className="text-gray-400">（随意填写）</span></label>
                 <input type="text" className="w-full border rounded px-2 py-1 text-sm" value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="显示名称" />
-              </div>
-              <div>
-                <label className="text-xs">提供商标识 <span className="text-gray-400">（可随意选择）</span></label>
-                <select className="w-full border rounded px-2 py-1 text-sm" value={form.provider}
-                  onChange={(e) => setForm({ ...form, provider: e.target.value as ModelConfig['provider'] })}>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="custom">自定义</option>
-                </select>
               </div>
               <div>
                 <label className="text-xs">Base URL <span className="text-red-500">* 按官方填</span></label>

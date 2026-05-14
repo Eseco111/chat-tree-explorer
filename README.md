@@ -15,11 +15,16 @@ npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre
 git add .
 git commit -m "final 1.2"
 查看所有版本
-git log --oneline --graph --all
-查看目标版本
-git checkout a1b2c3d
-回到版本
-git switch main  
+如果你不仅想放弃更改，还想删除所有新增的、从未被 Git 跟踪过的文件，就需要组合使用命令。
+
+执行硬重置：此命令会将你的暂存区和工作区都恢复到最近一次提交的状态，丢弃所有未提交的更改。
+
+bash
+git reset --hard HEAD
+清理未跟踪文件：这个命令会删除所有未被 Git 跟踪的文件和目录。
+
+bash
+git clean -fd
 
 
 main.tsx 临时暴露store

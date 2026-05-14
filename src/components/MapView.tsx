@@ -17,18 +17,12 @@ export default function MapView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
-
   const nodeTypes = useMemo(() => ({ customNode: CustomNode }), []);
 
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = convertToFlow(
-      tree,
-      tree.currentPath
-    );
+    const { nodes: newNodes, edges: newEdges } = convertToFlow(tree, tree.currentPath);
     setNodes(newNodes);
     setEdges(newEdges);
-
-    // 切换为全局视图，自动缩放到适应所有节点
     if (reactFlowInstanceRef.current) {
       setTimeout(() => {
         reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
@@ -44,9 +38,7 @@ export default function MapView() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        onInit={(instance) => {
-          reactFlowInstanceRef.current = instance;
-        }}
+        onInit={(instance) => { reactFlowInstanceRef.current = instance; }}
         attributionPosition="bottom-left"
       >
         <Background />

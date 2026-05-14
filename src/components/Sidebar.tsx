@@ -9,11 +9,12 @@ export default function Sidebar() {
   const deleteConversation = useTreeStore((s) => s.deleteConversation);
   const createConversation = useTreeStore((s) => s.createConversation);
   const renameConversation = useTreeStore((s) => s.renameConversation);
+  const sidebarCollapsed = useTreeStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useTreeStore((s) => s.toggleSidebar);
 
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 标题编辑状态
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
 
@@ -25,6 +26,8 @@ export default function Sidebar() {
 
   const handleNew = () => {
     createConversation('新对话');
+    // 如果侧边栏是折叠的，新建对话时自动展开方便查看
+    if (sidebarCollapsed) toggleSidebar();
   };
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
@@ -47,15 +50,12 @@ export default function Sidebar() {
     const file = e.target.files?.[0];
     if (!file) return;
     const success = await importConversation(file);
-    if (success) {
-      alert('导入成功！');
-    } else {
-      alert('导入失败，请检查文件格式。');
+    if (!success) {
+      alert('导入失败，请检查文件格式。');   // 只在失败时提示
     }
     e.target.value = '';
   };
 
-  // 启动编辑模式（供按钮和双击使用）
   const startEditing = (e: React.MouseEvent, id: string, currentTitle: string) => {
     e.stopPropagation();
     setEditingTitleId(id);
@@ -69,22 +69,73 @@ export default function Sidebar() {
     setEditingTitleId(null);
   };
 
-  return (
-    <div className="w-64 h-full bg-gray-900 text-white flex flex-col">
-      {/* 头部 */}
-      <div className="p-3 border-b border-gray-700">
+  // 折叠状态：仅显示窄栏
+  if (sidebarCollapsed) {
+    return (
+      <div className="w-12 h-full bg-gray-900 text-white flex flex-col items-center py-3 border-r border-gray-700 gap-3">
+        <button
+          onClick={toggleSidebar}
+          className="text-gray-400 hover:text-white text-lg"
+          title="展开侧边栏"
+        >
+          ☰
+        </button>
         <button
           onClick={handleNew}
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
+          className="text-gray-400 hover:text-white text-lg"
+          title="新建对话"
+        >
+          ＋
+        </button>
+        {/* 可以额外加一个导入图标按钮（可选） */}
+        <button
+          onClick={handleImportClick}
+          className="text-gray-400 hover:text-white text-lg"
+          title="导入对话"
+        >
+          ⬆
+        </button>
+        {/* 隐藏的 file input */}
+        <input
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+        {/* 底部留空，不再显示版本信息 */}
+      </div>
+    );
+  }
+
+  // 展开状态：完整侧边栏
+  return (
+    <div className="w-64 h-full bg-gray-900 text-white flex flex-col">
+      {/* 头部：新建按钮 + 折叠按钮 */}
+      <div className="p-3 border-b border-gray-700 flex items-center justify-between">
+        <button
+          onClick={handleNew}
+          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
         >
           + 新建对话
         </button>
+        <button
+          onClick={toggleSidebar}
+          className="ml-2 text-gray-400 hover:text-white text-lg"
+          title="收起侧边栏"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* 搜索框 */}
+      <div className="px-3 py-2">
         <input
           type="text"
           placeholder="搜索对话..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full mt-2 px-2 py-1 rounded bg-gray-800 text-sm border border-gray-700 focus:outline-none focus:border-blue-500"
+          className="w-full px-2 py-1 rounded bg-gray-800 text-sm border border-gray-700 focus:outline-none focus:border-blue-500"
         />
       </div>
 
@@ -133,7 +184,6 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  {/* 编辑按钮 */}
                   <button
                     onClick={(e) => startEditing(e, id, meta[id].title)}
                     className="text-gray-400 hover:text-yellow-400"
@@ -141,7 +191,6 @@ export default function Sidebar() {
                   >
                     ✎
                   </button>
-                  {/* 导出按钮 */}
                   <button
                     onClick={(e) => handleExport(e, id)}
                     className="text-gray-400 hover:text-blue-400"
@@ -149,7 +198,6 @@ export default function Sidebar() {
                   >
                     ⬇
                   </button>
-                  {/* 删除按钮 */}
                   <button
                     onClick={(e) => handleDelete(e, id)}
                     className="text-gray-400 hover:text-red-400"

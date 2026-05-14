@@ -59,32 +59,38 @@ export default function ChatView() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto bg-white rounded shadow">
-      <MessageList
-        messages={currentMessages}
-        editingNodeId={editingNodeId}
-        onEditStart={handleEditStart}
-        onEditSave={handleEditSave}
-      />
-      <div ref={messagesEndRef} />
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4">
+          <MessageList
+            messages={currentMessages}
+            editingNodeId={editingNodeId}
+            onEditStart={handleEditStart}
+            onEditSave={handleEditSave}
+          />
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-      <div className="border-t p-3 flex gap-2">
-        <textarea
-          className="flex-1 resize-none rounded border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          rows={2}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={isGenerating ? 'AI 正在回复...' : '输入消息，Enter 发送，Shift+Enter 换行'}
-          disabled={isGenerating}
-        />
-        <button
-          onClick={handleSend}
-          disabled={isGenerating || !input.trim()}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          发送
-        </button>
+      <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3">
+        <div className="max-w-3xl mx-auto flex gap-2 items-center">
+          <textarea
+            className="flex-1 h-11 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isGenerating ? 'AI 正在回复...' : '输入消息，Enter 发送'}
+            disabled={isGenerating}
+          />
+          <button
+            onClick={handleSend}
+            disabled={isGenerating || !input.trim()}
+            className="h-11 px-5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 transition flex-shrink-0 flex items-center justify-center"
+          >
+            发送
+          </button>
+        </div>
       </div>
     </div>
   );

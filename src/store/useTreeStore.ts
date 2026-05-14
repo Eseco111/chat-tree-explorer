@@ -34,10 +34,14 @@ interface TreeState {
   viewMode: 'chat' | 'map';
   selectedNodeId: string | null;
 
+  // 侧边栏折叠状态
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+
   createConversation: (title?: string) => string;
   switchConversation: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
-  renameConversation: (id: string, newTitle: string) => void; // 新增
+  renameConversation: (id: string, newTitle: string) => void;
 
   sendMessage: (content: string) => void;
   editMessage: (nodeId: string, newContent: string) => void;
@@ -76,6 +80,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   viewMode: 'chat',
   selectedNodeId: null,
+
+  sidebarCollapsed: false, // 初始展开
 
   createConversation: (title?: string) => {
     const state = get();
@@ -145,7 +151,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     await saveAppState('activeId', newActiveId);
   },
 
-  // 新增：重命名对话
   renameConversation: (id: string, newTitle: string) => {
     const state = get();
     if (!state.meta[id]) return;
@@ -157,7 +162,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   sendMessage: (content) => {
     const state = get();
-    if (!state.activeId) return; // 空状态防护
+    if (!state.activeId) return;
     const newTree = appendToCurrentBranch(state.tree, 'user', content);
     const newTrees = { ...state.trees, [state.activeId]: newTree };
 
@@ -218,6 +223,13 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   selectNode: (id) => set({ selectedNodeId: id }),
 
+  // 侧边栏折叠切换
+  toggleSidebar: () => {
+    const newCollapsed = !get().sidebarCollapsed;
+    set({ sidebarCollapsed: newCollapsed });
+    saveAppState('sidebarCollapsed', newCollapsed);
+  },
+
   addModel: (config) => {
     const state = get();
     const newModels = { ...state.models, [config.id]: config };
@@ -269,6 +281,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const appState = await loadAppState();
     const activeId: string = (appState.activeId as string) || '';
     const activeModelId: string = (appState.activeModelId as string) || '';
+    const sidebarCollapsed: boolean = !!appState.sidebarCollapsed; // 加载折叠状态
 
     let tree: ConversationTree;
     const trees: Record<string, ConversationTree> = {};
@@ -298,6 +311,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         activeModelId,
         trees,
         tree,
+        sidebarCollapsed, // 保持默认 false
       });
       return;
     }
@@ -309,6 +323,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       tree,
       models: modelsMap,
       activeModelId,
+      sidebarCollapsed, // 设置折叠状态
     });
   },
 

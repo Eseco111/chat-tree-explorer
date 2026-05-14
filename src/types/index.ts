@@ -27,9 +27,21 @@ export interface ConversationMeta {
 }
 
 // 应用整体持久化格式
+export interface ModelConfig {
+  id: string;            // 唯一标识，如 'deepseek-default'
+  name: string;          // 显示名称，如 'DeepSeek V4 Flash'
+  provider: 'deepseek' | 'openai' | 'custom';
+  baseURL: string;
+  apiKey: string;        // 注意：明文存储于本地，仅供个人工具
+  model: string;         // 模型名，如 'deepseek-v4-flash'
+  isDefault?: boolean;   // 是否预设默认（不可删除）
+}
+
+// 扩展 AppData，增加模型相关字段
 export interface AppData {
   activeId: string;
   meta: Record<string, ConversationMeta>;
-  // 树数据按需加载时不在此处存储所有节点，但第一阶段先全量存储
   trees: Record<string, ConversationTree>;
+  models: Record<string, ModelConfig>;       // 新增
+  activeModelId: string;                     // 新增
 }

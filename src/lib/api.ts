@@ -1,37 +1,34 @@
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import type { ModelConfig } from '../types';
 
-let client: OpenAI | null = null;
+let activeClient: OpenAI | null = null;
 
-export function initClient(apiKey: string): void {
-  client = new OpenAI({
-    apiKey,
-    baseURL: 'https://api.deepseek.com',     // ← 改成 DeepSeek 地址
+export function createClient(config: ModelConfig): OpenAI {
+  activeClient = new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: config.baseURL,
     dangerouslyAllowBrowser: true,
   });
+  return activeClient;
 }
 
-export function initFromStorage(): boolean {
-  const key = localStorage.getItem('deepseek-api-key');   // ← 改用新 key 名
-  if (key) {
-    initClient(key);
-    return true;
-  }
-  return false;
+export function getActiveClient(): OpenAI | null {
+  return activeClient;
 }
 
 export async function* streamChat(
-  messages: ChatCompletionMessageParam[]
+  messages: ChatCompletionMessageParam[],
+  model: string
 ): AsyncGenerator<string> {
-  if (!client) {
-    throw new Error('API 客户端未初始化，请先设置 API Key');
+  if (!activeClient) {
+    throw new Error('API 客户端未初始化');
   }
-  const stream = await client.chat.completions.create({
-    model: 'deepseek-v4-flash',     // ← 推荐模型（速度快、成本低）[5†L8-L10]
+  const stream = await activeClient.chat.completions.create({
+    model,
     messages,
     stream: true,
   });
-
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta?.content;
     if (delta) yield delta;

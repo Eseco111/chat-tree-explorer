@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { ConversationTree, ConversationMeta, AppData } from '../types';
+import type { ConversationTree, ConversationMeta, AppData, ModelConfig } from '../types';
 import {
   createTree,
   appendToCurrentBranch,
@@ -10,33 +10,34 @@ import {
 import { loadAppData, saveAppData } from '../lib/storage';
 
 interface TreeState {
-  // 多对话数据
   activeId: string;
   meta: Record<string, ConversationMeta>;
   trees: Record<string, ConversationTree>;
-  // 当前活跃树的快照（保持向后兼容）
   tree: ConversationTree;
 
-  // UI 状态
+  models: Record<string, ModelConfig>;
+  activeModelId: string;
+
   viewMode: 'chat' | 'map';
   selectedNodeId: string | null;
 
-  // 对话操作
   createConversation: (title?: string) => string;
   switchConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
 
-  // 树操作（针对当前对话）
   sendMessage: (content: string) => void;
   editMessage: (nodeId: string, newContent: string) => void;
   switchToNode: (nodeId: string) => void;
   setTree: (tree: ConversationTree) => void;
 
-  // 视图与选中
   setViewMode: (mode: 'chat' | 'map') => void;
   selectNode: (id: string | null) => void;
 
-  // 持久化
+  addModel: (config: ModelConfig) => void;
+  removeModel: (id: string) => void;
+  setActiveModel: (id: string) => void;
+  updateModel: (id: string, patch: Partial<ModelConfig>) => void;
+
   initFromStorage: () => void;
   persist: () => void;
 }
@@ -50,12 +51,13 @@ function createNewMeta(title?: string): ConversationMeta {
   };
 }
 
-// 保存当前状态到 localStorage（内部辅助）
 function persistState(state: TreeState) {
   const appData: AppData = {
     activeId: state.activeId,
     meta: state.meta,
     trees: state.trees,
+    models: state.models,
+    activeModelId: state.activeModelId,
   };
   saveAppData(appData);
 }
@@ -64,7 +66,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   activeId: '',
   meta: {},
   trees: {},
-  tree: createTree(), // 临时，将被初始化覆盖
+  tree: createTree(),
+
+  models: {},
+  activeModelId: '',            // 初始为空，无默认模型
 
   viewMode: 'chat',
   selectedNodeId: null,
@@ -88,11 +93,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   switchConversation: (id) => {
     const state = get();
     if (!state.trees[id]) return;
-    set({
-      activeId: id,
-      tree: state.trees[id],
-    });
-    // 不立即持久化，减少写入
+    set({ activeId: id, tree: state.trees[id] });
+    get().persist();
   },
 
   deleteConversation: (id) => {
@@ -104,14 +106,12 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     let newActiveId = state.activeId;
     let newTree = state.tree;
 
-    // 如果删除的是当前活跃对话，需要切换
     if (newActiveId === id) {
       const remainingIds = Object.keys(newTrees);
       if (remainingIds.length > 0) {
         newActiveId = remainingIds[0];
         newTree = newTrees[newActiveId];
       } else {
-        // 没有任何对话了，创建默认对话
         const meta = createNewMeta();
         const tree = createTree();
         set({
@@ -139,10 +139,8 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     const newTree = appendToCurrentBranch(state.tree, 'user', content);
     const newTrees = { ...state.trees, [state.activeId]: newTree };
 
-    // 如果当前对话标题为“新对话”且这是第一条用户消息，则自动设置为用户消息前20字
     const currentMeta = state.meta[state.activeId];
     if (currentMeta && currentMeta.title === '新对话') {
-      // 判断是否是第一条用户消息（通过检查当前树中是否有其他用户节点）
       const userMessageCount = Object.values(newTree.nodes).filter(
         (n) => n.role === 'user'
       ).length;
@@ -159,6 +157,7 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         return;
       }
     }
+
     set({ trees: newTrees, tree: newTree });
     persistState({ ...state, trees: newTrees, tree: newTree });
   },
@@ -195,6 +194,46 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   selectNode: (id) => set({ selectedNodeId: id }),
 
+  // ---------- 模型操作 ----------
+  addModel: (config) => {
+    const state = get();
+    const newModels = { ...state.models, [config.id]: config };
+    set({ models: newModels });
+    persistState(get());
+  },
+
+  removeModel: (id) => {
+    const state = get();
+    const newModels = { ...state.models };
+    delete newModels[id];
+    let newActive = state.activeModelId;
+    if (newActive === id) {
+      const firstId = Object.keys(newModels)[0];
+      newActive = firstId || '';           // 无模型时置空
+    }
+    set({ models: newModels, activeModelId: newActive });
+    persistState(get());
+  },
+
+  setActiveModel: (id) => {
+    if (id === '' || get().models[id]) {
+      set({ activeModelId: id });
+      get().persist();
+    }
+  },
+
+  updateModel: (id, patch) => {
+    const state = get();
+    if (!state.models[id]) return;
+    const newModels = {
+      ...state.models,
+      [id]: { ...state.models[id], ...patch },
+    };
+    set({ models: newModels });
+    persistState(get());
+  },
+
+  // ---------- 初始化 ----------
   initFromStorage: () => {
     const saved = loadAppData();
     if (saved && saved.trees && saved.activeId && saved.trees[saved.activeId]) {
@@ -203,9 +242,11 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         meta: saved.meta ?? {},
         trees: saved.trees,
         tree: saved.trees[saved.activeId],
+        models: saved.models ?? {},
+        activeModelId: saved.activeModelId ?? '',
       });
     } else {
-      // 首次使用或数据损坏，创建默认对话
+      // 仅创建默认对话，不自动创建模型
       get().createConversation();
     }
   },

@@ -25,7 +25,7 @@ import {
 interface TreeState {
   activeId: string;
   meta: Record<string, ConversationMeta>;
-  trees: Record<string, ConversationTree>;  // 缓存已加载的对话树
+  trees: Record<string, ConversationTree>;
   tree: ConversationTree;
 
   models: Record<string, ModelConfig>;
@@ -37,6 +37,7 @@ interface TreeState {
   createConversation: (title?: string) => string;
   switchConversation: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  renameConversation: (id: string, newTitle: string) => void; // 新增
 
   sendMessage: (content: string) => void;
   editMessage: (nodeId: string, newContent: string) => void;
@@ -52,7 +53,7 @@ interface TreeState {
   updateModel: (id: string, patch: Partial<ModelConfig>) => void;
 
   initFromStorage: () => Promise<void>;
-  persist: () => void;  // 保留兼容，但通常不再需要手动调用
+  persist: () => void;
 }
 
 function createNewMeta(title?: string): ConversationMeta {
@@ -76,12 +77,10 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   viewMode: 'chat',
   selectedNodeId: null,
 
-  // ---------- 对话操作 ----------
   createConversation: (title?: string) => {
     const state = get();
     const newMeta = createNewMeta(title);
     const newTree = createTree();
-    // 更新缓存
     const newTrees = { ...state.trees, [newMeta.id]: newTree };
     const newMetaMap = { ...state.meta, [newMeta.id]: newMeta };
     set({
@@ -90,7 +89,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       trees: newTrees,
       tree: newTree,
     });
-    // 异步持久化（不等待）
     saveConversationTree(newMeta.id, newTree);
     saveMeta(newMeta);
     saveAppState('activeId', newMeta.id);
@@ -99,13 +97,11 @@ export const useTreeStore = create<TreeState>((set, get) => ({
 
   switchConversation: async (id) => {
     const state = get();
-    // 如果已在缓存中，直接使用
     if (state.trees[id]) {
       set({ activeId: id, tree: state.trees[id] });
       await saveAppState('activeId', id);
       return;
     }
-    // 从 IndexedDB 加载
     const tree = await loadConversationTree(id);
     if (tree) {
       const newTrees = { ...state.trees, [id]: tree };
@@ -129,20 +125,12 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       const remainingIds = Object.keys(newMeta);
       if (remainingIds.length > 0) {
         newActiveId = remainingIds[0];
-        // 加载目标对话树
-        newTree = (await loadConversationTree(newActiveId)) || createTree();
-        if (newTree) newTrees[newActiveId] = newTree;
+        newTree = newTrees[newActiveId] || (await loadConversationTree(newActiveId)) || createTree();
+        if (!newTrees[newActiveId]) newTrees[newActiveId] = newTree;
       } else {
-        // 没有对话了，创建默认
-        const meta = createNewMeta();
-        const tree = createTree();
-        newTrees[meta.id] = tree;
-        newMeta[meta.id] = meta;
-        newActiveId = meta.id;
-        newTree = tree;
-        // 持久化新对话
-        saveConversationTree(meta.id, tree);
-        saveMeta(meta);
+        // 空状态
+        newActiveId = '';
+        newTree = createTree(); // 占位
       }
     }
 
@@ -152,19 +140,28 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       trees: newTrees,
       tree: newTree,
     });
-    // 异步删除 IndexedDB 中的旧对话
     deleteConversationTree(id);
     deleteMeta(id);
     await saveAppState('activeId', newActiveId);
   },
 
+  // 新增：重命名对话
+  renameConversation: (id: string, newTitle: string) => {
+    const state = get();
+    if (!state.meta[id]) return;
+    const updatedMeta = { ...state.meta[id], title: newTitle };
+    const newMetaMap = { ...state.meta, [id]: updatedMeta };
+    set({ meta: newMetaMap });
+    saveMeta(updatedMeta);
+  },
+
   sendMessage: (content) => {
     const state = get();
+    if (!state.activeId) return; // 空状态防护
     const newTree = appendToCurrentBranch(state.tree, 'user', content);
     const newTrees = { ...state.trees, [state.activeId]: newTree };
 
     const currentMeta = state.meta[state.activeId];
-    // 自动更新对话标题（如果是第一条消息）
     if (currentMeta && currentMeta.title === '新对话') {
       const userMessageCount = Object.values(newTree.nodes).filter(
         (n) => n.role === 'user'
@@ -179,7 +176,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
           [state.activeId]: newMetaItem,
         };
         set({ trees: newTrees, tree: newTree, meta: newMeta });
-        // 持久化
         saveConversationTree(state.activeId, newTree);
         saveMeta(newMetaItem);
         return;
@@ -222,7 +218,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   selectNode: (id) => set({ selectedNodeId: id }),
 
-  // ---------- 模型操作 ----------
   addModel: (config) => {
     const state = get();
     const newModels = { ...state.models, [config.id]: config };
@@ -260,27 +255,21 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     saveModelDB(newModel);
   },
 
-  // ---------- 初始化 ----------
   initFromStorage: async () => {
-    // 1. 迁移旧 localStorage 数据（仅一次）
     await migrateFromLocalStorage();
 
-    // 2. 从 IndexedDB 加载元信息
     const allMeta = await loadAllMeta();
     const metaMap: Record<string, ConversationMeta> = {};
     allMeta.forEach(m => metaMap[m.id] = m);
 
-    // 3. 加载模型配置
     const allModels = await loadAllModels();
     const modelsMap: Record<string, ModelConfig> = {};
     allModels.forEach(m => modelsMap[m.id] = m);
 
-    // 4. 加载应用状态
     const appState = await loadAppState();
     const activeId: string = (appState.activeId as string) || '';
     const activeModelId: string = (appState.activeModelId as string) || '';
 
-    // 5. 加载当前活跃对话树（如果存在）
     let tree: ConversationTree;
     const trees: Record<string, ConversationTree> = {};
 
@@ -290,21 +279,17 @@ export const useTreeStore = create<TreeState>((set, get) => ({
         tree = savedTree;
         trees[activeId] = savedTree;
       } else {
-        // 如果树丢失，创建新树并保存
         tree = createTree();
         trees[activeId] = tree;
         saveConversationTree(activeId, tree);
       }
     } else {
-      // 没有活跃对话或元信息损坏，创建一个默认对话
       const meta = createNewMeta();
       metaMap[meta.id] = meta;
       tree = createTree();
       trees[meta.id] = tree;
-      // 持久化新对话
       saveConversationTree(meta.id, tree);
       saveMeta(meta);
-      // 更新应用状态
       saveAppState('activeId', meta.id);
       set({
         activeId: meta.id,
@@ -317,7 +302,6 @@ export const useTreeStore = create<TreeState>((set, get) => ({
       return;
     }
 
-    // 设置最终状态
     set({
       activeId,
       meta: metaMap,
@@ -328,7 +312,5 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     });
   },
 
-  persist: () => {
-    // 不再需要全量持久化，保留空实现以防旧代码调用
-  },
+  persist: () => {},
 }));

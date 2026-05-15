@@ -86,3 +86,56 @@ export function importConversation(file: File): Promise<boolean> {
     reader.readAsText(file);
   });
 }
+
+// 导出到剪贴板（移动端使用）
+export async function exportConversationToClipboard(id: string, meta: ConversationMeta): Promise<boolean> {
+  const tree = await loadConversationTree(id);
+  if (!tree) {
+    alert('对话数据不存在');
+    return false;
+  }
+  const data = { meta, tree };
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    return true;
+  } catch (err) {
+    console.error('复制失败', err);
+    return false;
+  }
+}
+
+// 从文本导入（移动端粘贴使用）
+export async function importConversationFromText(text: string): Promise<boolean> {
+  try {
+    const json = JSON.parse(text);
+    if (!json.meta || !json.tree) throw new Error('格式错误');
+    const meta = json.meta as ConversationMeta;
+    const tree = json.tree as ConversationTree;
+
+    // 基础数据校验
+    if (!meta.id || !meta.title || !tree.rootId || !tree.nodes) throw new Error('数据不完整');
+
+    await saveMeta(meta);
+    await saveConversationTree(meta.id, tree);
+
+    const { useTreeStore } = await import('../store/useTreeStore');
+    const storeState = useTreeStore.getState();
+    const newMeta = { ...storeState.meta, [meta.id]: meta };
+    const newTrees = { ...storeState.trees, [meta.id]: tree };
+
+    if (!storeState.activeId) {
+      useTreeStore.setState({
+        meta: newMeta,
+        trees: newTrees,
+        activeId: meta.id,
+        tree,
+      });
+    } else {
+      useTreeStore.setState({ meta: newMeta, trees: newTrees });
+    }
+    return true;
+  } catch (err) {
+    console.error('导入失败', err);
+    return false;
+  }
+}

@@ -53,7 +53,7 @@ function App() {
       {/* 主内容区 */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* 顶部栏：移动端显示汉堡按钮，桌面端在折叠时才显示 */}
-        <header className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+        <header className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 safe-top">
           <div className="flex items-center gap-2">
             {/* 移动端汉堡 */}
             <button

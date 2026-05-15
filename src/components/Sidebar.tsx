@@ -1,6 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTreeStore } from '../store/useTreeStore';
-import { exportConversation, importConversation } from '../lib/exportImport';
+import {
+  exportConversation,
+  importConversation,
+  exportConversationToClipboard,
+  importConversationFromText,
+} from '../lib/exportImport';
 
 export default function Sidebar() {
   const activeId = useTreeStore((s) => s.activeId);
@@ -17,6 +22,19 @@ export default function Sidebar() {
 
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState('');
+
+  // 移动端检测
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // 粘贴导入相关状态
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
 
   const conversationIds = Object.keys(meta).filter((id) => {
     if (!search.trim()) return true;
@@ -36,15 +54,31 @@ export default function Sidebar() {
     }
   };
 
-  const handleExport = (e: React.MouseEvent, id: string) => {
+  // 导出分流：移动端复制到剪贴板，桌面端下载文件
+  const handleExport = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    exportConversation(id, meta[id]);
+    if (isMobile) {
+      const ok = await exportConversationToClipboard(id, meta[id]);
+      if (ok) {
+        alert('JSON 已复制到剪贴板');
+      } else {
+        alert('复制失败，请检查浏览器权限');
+      }
+    } else {
+      exportConversation(id, meta[id]);
+    }
   };
 
+  // 导入按钮点击：移动端弹出粘贴框，桌面端调用文件选择器
   const handleImportClick = () => {
-    fileInputRef.current?.click();
+    if (isMobile) {
+      setPasteModalOpen(true);
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
+  // 桌面端文件选择回调
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -53,6 +87,18 @@ export default function Sidebar() {
       alert('导入失败，请检查文件格式。');
     }
     e.target.value = '';
+  };
+
+  // 移动端粘贴导入
+  const handlePasteImport = async () => {
+    if (!pasteText.trim()) return;
+    const success = await importConversationFromText(pasteText);
+    if (success) {
+      setPasteModalOpen(false);
+      setPasteText('');
+    } else {
+      alert('导入失败，请检查 JSON 格式是否正确');
+    }
   };
 
   const startEditing = (e: React.MouseEvent, id: string, currentTitle: string) => {
@@ -68,7 +114,7 @@ export default function Sidebar() {
     setEditingTitleId(null);
   };
 
-  // 折叠状态：仅显示窄栏
+  // 折叠状态
   if (sidebarCollapsed) {
     return (
       <div className="w-12 h-full bg-gray-900 text-white flex flex-col items-center py-3 border-r border-gray-700 gap-3">
@@ -88,39 +134,54 @@ export default function Sidebar() {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
+        {/* 移动端粘贴弹窗 */}
+        {pasteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-md">
+              <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">粘贴对话 JSON</h3>
+              <textarea
+                className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:text-white"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="将导出的 JSON 文本粘贴到这里"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  onClick={() => setPasteModalOpen(false)}
+                  className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded"
+                >取消</button>
+                <button
+                  onClick={handlePasteImport}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+                >导入</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // 展开状态：完整侧边栏
+  // 展开状态
   return (
     <div className="w-64 h-full bg-gray-900 text-white flex flex-col">
-      {/* Logo 区域：紧凑高度，橙黄色文字 */}
+      {/* Logo */}
       <div className="h-10 flex items-center px-4 border-b border-gray-700">
-        <h1 className="text-lg font-bold text-amber-500 select-none tracking-tight">
-          ChatTree
-        </h1>
-        {/* 副标题隐藏，但可在 title 中显示 */}
+        <h1 className="text-lg font-bold text-amber-500 select-none tracking-tight">ChatTree</h1>
       </div>
 
-      {/* 新建对话按钮 + 折叠按钮（与之前相同） */}
+      {/* 新建 + 折叠 */}
       <div className="p-3 flex items-center justify-between">
-        <button
-          onClick={handleNew}
-          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
-        >
+        <button onClick={handleNew} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition">
           + 新建对话
         </button>
-        <button
-          onClick={toggleSidebar}
-          className="ml-2 text-gray-400 hover:text-white text-lg"
-          title="收起侧边栏"
-        >
+        <button onClick={toggleSidebar} className="ml-2 text-gray-400 hover:text-white text-lg" title="收起侧边栏">
           ✕
         </button>
       </div>
 
-      {/* 搜索框 */}
+      {/* 搜索 */}
       <div className="px-3 py-2">
         <input
           type="text"
@@ -143,9 +204,7 @@ export default function Sidebar() {
                 key={id}
                 onClick={async () => await switchConversation(id)}
                 className={`group flex items-center justify-between px-3 py-2 cursor-pointer border-l-2 transition ${
-                  isActive
-                    ? 'bg-gray-700 border-blue-500'
-                    : 'border-transparent hover:bg-gray-800'
+                  isActive ? 'bg-gray-700 border-blue-500' : 'border-transparent hover:bg-gray-800'
                 }`}
               >
                 <div className="flex-1 truncate">
@@ -176,27 +235,9 @@ export default function Sidebar() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={(e) => startEditing(e, id, meta[id].title)}
-                    className="text-gray-400 hover:text-yellow-400"
-                    title="重命名对话"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    onClick={(e) => handleExport(e, id)}
-                    className="text-gray-400 hover:text-blue-400"
-                    title="导出对话"
-                  >
-                    ⬇
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(e, id)}
-                    className="text-gray-400 hover:text-red-400"
-                    title="删除对话"
-                  >
-                    ✕
-                  </button>
+                  <button onClick={(e) => startEditing(e, id, meta[id].title)} className="text-gray-400 hover:text-yellow-400" title="重命名对话">✎</button>
+                  <button onClick={(e) => handleExport(e, id)} className="text-gray-400 hover:text-blue-400" title="导出对话">⬇</button>
+                  <button onClick={(e) => handleDelete(e, id)} className="text-gray-400 hover:text-red-400" title="删除对话">✕</button>
                 </div>
               </div>
             );
@@ -213,14 +254,31 @@ export default function Sidebar() {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
-        <button
-          onClick={handleImportClick}
-          className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm transition mb-1"
-        >
+        <button onClick={handleImportClick} className="w-full py-1.5 bg-gray-800 hover:bg-gray-700 rounded text-sm transition mb-1">
           导入对话
         </button>
         <div className="text-center">v3.0</div>
       </div>
+
+      {/* 移动端粘贴弹窗（展开状态下也可能出现） */}
+      {pasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-md">
+            <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">粘贴对话 JSON</h3>
+            <textarea
+              className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:text-white"
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="将导出的 JSON 文本粘贴到这里"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setPasteModalOpen(false)} className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded">取消</button>
+              <button onClick={handlePasteImport} className="px-3 py-1 text-sm bg-blue-600 text-white rounded">导入</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

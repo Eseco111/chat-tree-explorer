@@ -13,7 +13,7 @@ npm install -D typescript @types/react @types/react-dom @types/uuid @types/dagre
 
 提交
 git add .
-git commit -m "final 1.2"
+git commit -m "final 2.51"
 查看所有版本
 如果你不仅想放弃更改，还想删除所有新增的、从未被 Git 跟踪过的文件，就需要组合使用命令。
 
@@ -26,5 +26,8 @@ git reset --hard HEAD
 bash
 git clean -fd
 
+git add .
+git commit -m "v2.51"  
+git push origin main  
 
-main.tsx 临时暴露store
+https://eseco111.github.io/chat-tree-explorer/

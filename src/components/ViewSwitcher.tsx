@@ -12,7 +12,7 @@ export default function ViewSwitcher() {
       className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300 transition"
       title={viewMode === 'chat' ? '切换到全景图' : '切换到对话'}
     >
-      {viewMode === 'chat' ? '🗺️ 全景图' : '💬 对话'}
+      {viewMode === 'chat' ? '全景图' : '对话'}
     </button>
   );
 }

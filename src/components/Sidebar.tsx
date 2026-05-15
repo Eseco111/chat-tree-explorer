@@ -26,7 +26,6 @@ export default function Sidebar() {
 
   const handleNew = () => {
     createConversation('新对话');
-    // 如果侧边栏是折叠的，新建对话时自动展开方便查看
     if (sidebarCollapsed) toggleSidebar();
   };
 
@@ -51,7 +50,7 @@ export default function Sidebar() {
     if (!file) return;
     const success = await importConversation(file);
     if (!success) {
-      alert('导入失败，请检查文件格式。');   // 只在失败时提示
+      alert('导入失败，请检查文件格式。');
     }
     e.target.value = '';
   };
@@ -73,29 +72,15 @@ export default function Sidebar() {
   if (sidebarCollapsed) {
     return (
       <div className="w-12 h-full bg-gray-900 text-white flex flex-col items-center py-3 border-r border-gray-700 gap-3">
-        <button
-          onClick={toggleSidebar}
-          className="text-gray-400 hover:text-white text-lg"
-          title="展开侧边栏"
-        >
+        <button onClick={toggleSidebar} className="text-gray-400 hover:text-white text-lg" title="展开侧边栏">
           ☰
         </button>
-        <button
-          onClick={handleNew}
-          className="text-gray-400 hover:text-white text-lg"
-          title="新建对话"
-        >
+        <button onClick={handleNew} className="text-gray-400 hover:text-white text-lg" title="新建对话">
           ＋
         </button>
-        {/* 可以额外加一个导入图标按钮（可选） */}
-        <button
-          onClick={handleImportClick}
-          className="text-gray-400 hover:text-white text-lg"
-          title="导入对话"
-        >
+        <button onClick={handleImportClick} className="text-gray-400 hover:text-white text-lg" title="导入对话">
           ⬆
         </button>
-        {/* 隐藏的 file input */}
         <input
           type="file"
           accept=".json"
@@ -103,7 +88,6 @@ export default function Sidebar() {
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
-        {/* 底部留空，不再显示版本信息 */}
       </div>
     );
   }
@@ -111,8 +95,16 @@ export default function Sidebar() {
   // 展开状态：完整侧边栏
   return (
     <div className="w-64 h-full bg-gray-900 text-white flex flex-col">
-      {/* 头部：新建按钮 + 折叠按钮 */}
-      <div className="p-3 border-b border-gray-700 flex items-center justify-between">
+      {/* Logo 区域：紧凑高度，橙黄色文字 */}
+      <div className="h-10 flex items-center px-4 border-b border-gray-700">
+        <h1 className="text-lg font-bold text-amber-500 select-none tracking-tight">
+          ChatTree
+        </h1>
+        {/* 副标题隐藏，但可在 title 中显示 */}
+      </div>
+
+      {/* 新建对话按钮 + 折叠按钮（与之前相同） */}
+      <div className="p-3 flex items-center justify-between">
         <button
           onClick={handleNew}
           className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
@@ -227,7 +219,7 @@ export default function Sidebar() {
         >
           导入对话
         </button>
-        <div className="text-center">对话树浏览器 v2.0</div>
+        <div className="text-center">v3.0</div>
       </div>
     </div>
   );

@@ -36,6 +36,9 @@ export default function Sidebar() {
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
 
+  // 自定义删除确认框
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const conversationIds = Object.keys(meta).filter((id) => {
     if (!search.trim()) return true;
     return meta[id].title.toLowerCase().includes(search.toLowerCase());
@@ -47,14 +50,21 @@ export default function Sidebar() {
     if (sidebarCollapsed) toggleSidebar();
   };
 
+  // 改为打开自定义确认框，而非原生 confirm
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm('确定删除此对话？')) {
-      deleteConversation(id);
+    setConfirmDeleteId(id);
+  };
+
+  // 执行删除并关闭确认框
+  const doDelete = () => {
+    if (confirmDeleteId) {
+      deleteConversation(confirmDeleteId);
+      setConfirmDeleteId(null);
     }
   };
 
-  // 导出分流：移动端复制到剪贴板，桌面端下载文件
+  // 导出分流
   const handleExport = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (isMobile) {
@@ -69,7 +79,7 @@ export default function Sidebar() {
     }
   };
 
-  // 导入按钮点击：移动端弹出粘贴框，桌面端调用文件选择器
+  // 导入按钮点击
   const handleImportClick = () => {
     if (isMobile) {
       setPasteModalOpen(true);
@@ -114,63 +124,55 @@ export default function Sidebar() {
     setEditingTitleId(null);
   };
 
-  // 折叠状态
-  if (sidebarCollapsed) {
-    return (
-      <div className="w-12 h-full bg-gray-900 text-white flex flex-col items-center py-3 border-r border-gray-700 gap-3">
-        <button onClick={toggleSidebar} className="text-gray-400 hover:text-white text-lg" title="展开侧边栏">
-          ☰
-        </button>
-        <button onClick={handleNew} className="text-gray-400 hover:text-white text-lg" title="新建对话">
-          ＋
-        </button>
-        <button onClick={handleImportClick} className="text-gray-400 hover:text-white text-lg" title="导入对话">
-          ⬆
-        </button>
-        <input
-          type="file"
-          accept=".json"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-        {/* 移动端粘贴弹窗 */}
-        {pasteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-md">
-              <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">粘贴对话 JSON</h3>
-              <textarea
-                className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:text-white"
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                placeholder="将导出的 JSON 文本粘贴到这里"
-                autoFocus
-              />
-              <div className="flex justify-end gap-2 mt-3">
-                <button
-                  onClick={() => setPasteModalOpen(false)}
-                  className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded"
-                >取消</button>
-                <button
-                  onClick={handlePasteImport}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
-                >导入</button>
-              </div>
+  // 侧边栏内容（折叠/展开）
+  const sidebarContent = sidebarCollapsed ? (
+    <div className="w-12 h-full bg-gray-900 text-white flex flex-col items-center py-3 border-r border-gray-700 gap-3">
+      <button onClick={toggleSidebar} className="text-gray-400 hover:text-white text-lg" title="展开侧边栏">
+        ☰
+      </button>
+      <button onClick={handleNew} className="text-gray-400 hover:text-white text-lg" title="新建对话">
+        ＋
+      </button>
+      <button onClick={handleImportClick} className="text-gray-400 hover:text-white text-lg" title="导入对话">
+        ⬆
+      </button>
+      <input
+        type="file"
+        accept=".json"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+      {/* 移动端粘贴弹窗（折叠状态） */}
+      {pasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-md">
+            <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">粘贴对话 JSON</h3>
+            <textarea
+              className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 text-black dark:text-white"
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder="将导出的 JSON 文本粘贴到这里"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setPasteModalOpen(false)} className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded">
+                取消
+              </button>
+              <button onClick={handlePasteImport} className="px-3 py-1 text-sm bg-blue-600 text-white rounded">
+                导入
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    );
-  }
-
-  // 展开状态
-  return (
+        </div>
+      )}
+    </div>
+  ) : (
     <div className="w-64 h-full bg-gray-900 text-white flex flex-col">
       {/* Logo */}
       <div className="h-10 flex items-center px-4 border-b border-gray-700">
         <h1 className="text-lg font-bold text-amber-500 select-none tracking-tight">ChatTree</h1>
       </div>
-
       {/* 新建 + 折叠 */}
       <div className="p-3 flex items-center justify-between">
         <button onClick={handleNew} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition">
@@ -180,7 +182,6 @@ export default function Sidebar() {
           ✕
         </button>
       </div>
-
       {/* 搜索 */}
       <div className="px-3 py-2">
         <input
@@ -191,7 +192,6 @@ export default function Sidebar() {
           className="w-full px-2 py-1 rounded bg-gray-800 text-sm border border-gray-700 focus:outline-none focus:border-blue-500"
         />
       </div>
-
       {/* 对话列表 */}
       <div className="flex-1 overflow-y-auto">
         {conversationIds.length === 0 ? (
@@ -244,7 +244,6 @@ export default function Sidebar() {
           })
         )}
       </div>
-
       {/* 底部区域 */}
       <div className="p-2 border-t border-gray-700 text-xs text-gray-500">
         <input
@@ -259,14 +258,13 @@ export default function Sidebar() {
         </button>
         <div className="text-center">v3.0</div>
       </div>
-
-      {/* 移动端粘贴弹窗（展开状态下也可能出现） */}
+      {/* 移动端粘贴弹窗（展开状态） */}
       {pasteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-md">
             <h3 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">粘贴对话 JSON</h3>
             <textarea
-              className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:text-white"
+              className="w-full h-36 border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 text-black dark:text-white"
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               placeholder="将导出的 JSON 文本粘贴到这里"
@@ -280,5 +278,34 @@ export default function Sidebar() {
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {sidebarContent}
+
+      {/* 自定义删除确认框（独立渲染，不受折叠影响） */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 w-11/12 max-w-sm">
+            <p className="text-gray-900 dark:text-white mb-4">确定删除此对话？</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="px-4 py-2 text-sm bg-gray-200 dark:bg-gray-600 rounded"
+              >
+                取消
+              </button>
+              <button
+                onClick={doDelete}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded"
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

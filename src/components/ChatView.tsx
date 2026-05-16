@@ -20,9 +20,12 @@ export default function ChatView() {
   const currentMessages = tree.currentPath
     .map((id) => tree.nodes[id])
     .filter(
-      (n) => n && (n.role === 'user' || n.role === 'assistant') && n.content !== undefined
+      (n) =>
+        n &&
+        (n.role === 'user' || n.role === 'assistant') &&
+        n.content !== undefined &&
+        n.content !== ''  // 过滤掉空内容（占位节点）
     );
-
 
   // 监听用户手动滚动，记录是否在底部
   useEffect(() => {
@@ -118,20 +121,29 @@ export default function ChatView() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-      {/* 消息流区 – 增加 ref 用于智能滚动 */}
+      {/* 消息流区 */}
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto"
       >
-        <div className="max-w-5xl mx-auto px-4 md:px-6">
-          <MessageList
-            messages={currentMessages}
-            editingNodeId={editingNodeId}
-            onEditStart={handleEditStart}
-            onEditSave={handleEditSave}
-            onRegenerate={handleRegenerate}
-            onCopy={handleCopy}
-          />
+        <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6">
+          {currentMessages.length === 0 ? (
+            // 新对话空白状态
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-400 dark:text-gray-500 text-sm">
+                输入消息开始对话
+              </p>
+            </div>
+          ) : (
+            <MessageList
+              messages={currentMessages}
+              editingNodeId={editingNodeId}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onRegenerate={handleRegenerate}
+              onCopy={handleCopy}
+            />
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>

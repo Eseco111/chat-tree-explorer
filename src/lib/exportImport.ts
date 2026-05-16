@@ -95,9 +95,10 @@ async function processImportText(raw: string): Promise<{ success: boolean; error
     let json: unknown;
     try {
       json = JSON.parse(clean);
-    } catch (parseErr: unknown) {
-      const message = parseErr instanceof Error ? parseErr.message : String(parseErr);
-      return { success: false, error: `JSON 格式错误：${message}` };
+    } catch (err: unknown) {
+      console.error('导入失败:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: `系统错误：${message}` };
     }
 
     // 4. 校验结构

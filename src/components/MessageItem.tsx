@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-sanitize';
+// @ts-ignore
+import rehypeRaw from 'rehype-raw';        // 修正导入
 import rehypeSanitize from 'rehype-sanitize';
 
 interface MessageItemProps {
@@ -13,6 +14,24 @@ interface MessageItemProps {
   onSaveEdit?: (newContent: string) => void;
   onRegenerate?: () => void;
   onCopy?: (text: string) => void;
+}
+
+// AI 回复格式化预处理
+function preprocessAIContent(text: string): string {
+  let processed = text;
+  // 1. 修复未闭合的 ** 粗体标记（单数个 ** 出现时补全）
+  const boldCount = (processed.match(/\*\*/g) || []).length;
+  if (boldCount % 2 !== 0) {
+    processed += '**';
+  }
+  // 2. 修复行首的 🔹 等符号，在前面添加列表标记 "- "
+  processed = processed.replace(/^([🔹🔸🔹▪▸►•])\s*/gm, '- $1 ');
+  // 3. 修复不完整的链接（可选）
+  // 4. 移除多余的空格（保留必要的）
+  processed = processed.replace(/ {2,}/g, ' ');
+  // 5. 确保列表项前有空行（Markdown 标准要求）
+  processed = processed.replace(/([^\n])\n-/g, '$1\n\n-');
+  return processed;
 }
 
 export default function MessageItem({
@@ -114,7 +133,7 @@ export default function MessageItem({
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw, rehypeSanitize]}
             >
-              {content}
+              {preprocessAIContent(content)}
             </ReactMarkdown>
           </div>
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 dark:text-gray-500">

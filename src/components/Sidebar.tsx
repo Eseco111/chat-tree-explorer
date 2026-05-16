@@ -196,7 +196,6 @@ export default function Sidebar({ onClose }: SidebarProps) {
                       </div>
                     )}
                     <div className="text-xs text-gray-400">
-                      提示：微信中可能对长文本截断，若导入失败请尝试用电脑导入。
                       {new Date(meta[id].createdAt).toLocaleDateString()}
                     </div>
                   </div>

@@ -1,8 +1,13 @@
+import { v4 as uuidv4 } from 'uuid';
 import type { ConversationMeta, ConversationTree } from '../types';
-import { loadConversationTree, saveConversationTree, saveMeta } from './db';
+import {
+  loadConversationTree,
+  saveConversationTree,
+  saveMeta,
+} from './db';
 
 /**
- * 导出单个对话为 JSON 文件并触发浏览器下载
+ * 导出单个对话为 JSON 文件并触发浏览器下载（桌面端）
  */
 export async function exportConversation(id: string, meta: ConversationMeta): Promise<void> {
   const tree = await loadConversationTree(id);
@@ -10,13 +15,11 @@ export async function exportConversation(id: string, meta: ConversationMeta): Pr
     alert('对话数据不存在，无法导出');
     return;
   }
-
   const data = { meta, tree };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  // 文件名：对话标题-日期.json
   a.download = `${meta.title}-${new Date(meta.createdAt).toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
@@ -25,8 +28,7 @@ export async function exportConversation(id: string, meta: ConversationMeta): Pr
 }
 
 /**
- * 导入 JSON 文件并添加到 IndexedDB 和 Store
- * @returns 是否成功
+ * 桌面端文件导入：读取 File 并导入为新对话
  */
 export function importConversation(file: File): Promise<boolean> {
   return new Promise((resolve) => {
@@ -35,48 +37,8 @@ export function importConversation(file: File): Promise<boolean> {
       try {
         const raw = e.target?.result;
         if (typeof raw !== 'string') throw new Error('无法读取文件内容');
-        const json = JSON.parse(raw);
-
-        // 基本格式验证
-        if (!json.meta || !json.tree) {
-          throw new Error('文件格式不正确，需要包含 meta 和 tree');
-        }
-        const meta = json.meta as ConversationMeta;
-        const tree = json.tree as ConversationTree;
-
-        // 可选：验证必要字段
-        if (!meta.id || !meta.title || !tree.rootId || !tree.nodes) {
-          throw new Error('数据缺少必要字段');
-        }
-
-        // 存入 IndexedDB
-        await saveMeta(meta);
-        await saveConversationTree(meta.id, tree);
-
-        // 动态导入 store，避免循环依赖
-        const { useTreeStore } = await import('../store/useTreeStore');
-        const storeState = useTreeStore.getState();
-
-        // 更新 store 中的 meta 和 trees 缓存
-        const newMeta = { ...storeState.meta, [meta.id]: meta };
-        const newTrees = { ...storeState.trees, [meta.id]: tree };
-
-        // 如果当前没有活跃对话，可以自动切换到导入的对话（可选）
-        if (!storeState.activeId) {
-          useTreeStore.setState({
-            meta: newMeta,
-            trees: newTrees,
-            activeId: meta.id,
-            tree: tree,
-          });
-        } else {
-          useTreeStore.setState({
-            meta: newMeta,
-            trees: newTrees,
-          });
-        }
-
-        resolve(true);
+        const success = await processImportText(raw);
+        resolve(success);
       } catch (err) {
         console.error('导入失败:', err);
         resolve(false);
@@ -87,7 +49,74 @@ export function importConversation(file: File): Promise<boolean> {
   });
 }
 
-// 导出到剪贴板（移动端使用）
+/**
+ * 移动端粘贴导入：将 JSON 文本导入为新对话
+ */
+export async function importConversationFromText(text: string): Promise<boolean> {
+  return processImportText(text);
+}
+
+/**
+ * 通用文本导入逻辑：解析并存储为新对话（不覆盖已有）
+ */
+async function processImportText(raw: string): Promise<boolean> {
+  try {
+    // 去除 BOM 头和首尾空格
+    const clean = raw.replace(/^\uFEFF/, '').trim();
+    if (!clean) throw new Error('内容为空');
+    const json = JSON.parse(clean);
+    if (!json.meta || !json.tree) throw new Error('缺少 meta 或 tree');
+    const originalMeta = json.meta as ConversationMeta;
+    const tree = json.tree as ConversationTree;
+
+    // 基本完整性校验
+    if (!originalMeta.title || !tree.rootId || !tree.nodes) {
+      throw new Error('数据不完整：缺少标题或树结构');
+    }
+
+    // 创建全新对话（防止覆盖）
+    const newId = uuidv4();
+    const newMeta: ConversationMeta = {
+      id: newId,
+      title: originalMeta.title,
+      createdAt: Date.now(),
+      activeModelId: null,
+    };
+
+    // 存储到 IndexedDB
+    await saveMeta(newMeta);
+    await saveConversationTree(newId, tree);
+
+    // 更新 Store
+    const { useTreeStore } = await import('../store/useTreeStore');
+    const store = useTreeStore.getState();
+    const newMetaMap = { ...store.meta, [newId]: newMeta };
+    const newTrees = { ...store.trees, [newId]: tree };
+
+    // 如果没有活跃对话，自动切换到新对话；否则仅添加
+    if (!store.activeId) {
+      useTreeStore.setState({
+        meta: newMetaMap,
+        trees: newTrees,
+        activeId: newId,
+        tree,
+      });
+    } else {
+      useTreeStore.setState({
+        meta: newMetaMap,
+        trees: newTrees,
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('导入解析失败:', err);
+    return false;
+  }
+}
+
+/**
+ * 移动端导出到剪贴板
+ */
 export async function exportConversationToClipboard(id: string, meta: ConversationMeta): Promise<boolean> {
   const tree = await loadConversationTree(id);
   if (!tree) {
@@ -100,42 +129,6 @@ export async function exportConversationToClipboard(id: string, meta: Conversati
     return true;
   } catch (err) {
     console.error('复制失败', err);
-    return false;
-  }
-}
-
-// 从文本导入（移动端粘贴使用）
-export async function importConversationFromText(text: string): Promise<boolean> {
-  try {
-    const json = JSON.parse(text);
-    if (!json.meta || !json.tree) throw new Error('格式错误');
-    const meta = json.meta as ConversationMeta;
-    const tree = json.tree as ConversationTree;
-
-    // 基础数据校验
-    if (!meta.id || !meta.title || !tree.rootId || !tree.nodes) throw new Error('数据不完整');
-
-    await saveMeta(meta);
-    await saveConversationTree(meta.id, tree);
-
-    const { useTreeStore } = await import('../store/useTreeStore');
-    const storeState = useTreeStore.getState();
-    const newMeta = { ...storeState.meta, [meta.id]: meta };
-    const newTrees = { ...storeState.trees, [meta.id]: tree };
-
-    if (!storeState.activeId) {
-      useTreeStore.setState({
-        meta: newMeta,
-        trees: newTrees,
-        activeId: meta.id,
-        tree,
-      });
-    } else {
-      useTreeStore.setState({ meta: newMeta, trees: newTrees });
-    }
-    return true;
-  } catch (err) {
-    console.error('导入失败', err);
     return false;
   }
 }

@@ -6,6 +6,8 @@ interface MessageListProps {
   editingNodeId: string | null;
   onEditStart: (nodeId: string) => void;
   onEditSave: (nodeId: string, newContent: string) => void;
+  onRegenerate?: () => void;
+  onCopy?: (text: string) => void;
 }
 
 export default function MessageList({
@@ -13,9 +15,11 @@ export default function MessageList({
   editingNodeId,
   onEditStart,
   onEditSave,
+  onRegenerate,
+  onCopy,
 }: MessageListProps) {
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+    <div className="space-y-2">
       {messages.map((msg) => (
         <MessageItem
           key={msg.id}
@@ -25,6 +29,8 @@ export default function MessageList({
           isEditing={editingNodeId === msg.id}
           onEdit={() => onEditStart(msg.id)}
           onSaveEdit={(newContent) => onEditSave(msg.id, newContent)}
+          onRegenerate={msg.role === 'assistant' ? onRegenerate : undefined}
+          onCopy={onCopy}
         />
       ))}
     </div>

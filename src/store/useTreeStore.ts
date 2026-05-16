@@ -37,11 +37,12 @@ interface TreeState {
   // 侧边栏折叠状态
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
-
   createConversation: (title?: string) => string;
   switchConversation: (id: string) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, newTitle: string) => void;
+
+  regenerateLastAssistant: () => void;
 
   sendMessage: (content: string) => void;
   editMessage: (nodeId: string, newContent: string) => void;
@@ -190,6 +191,45 @@ export const useTreeStore = create<TreeState>((set, get) => ({
     set({ trees: newTrees, tree: newTree });
     saveConversationTree(state.activeId, newTree);
   },
+
+
+  regenerateLastAssistant: () => {
+    const state = get();
+    if (!state.activeId) return;
+    const oldTree = state.tree;
+    const path = oldTree.currentPath;
+    // 至少需要一个用户消息和一个助手消息
+    if (path.length < 2) return;
+
+    const lastNodeId = path[path.length - 1];
+    const lastNode = oldTree.nodes[lastNodeId];
+    if (lastNode?.role !== 'assistant') return;
+
+    // 获取父节点（应该是用户消息）
+    const parentId = path[path.length - 2];
+    const parent = oldTree.nodes[parentId];
+    if (!parent) return;
+
+    // 从父节点的 childrenIds 中移除最后一个 assistant
+    const newChildrenIds = parent.childrenIds.filter(id => id !== lastNodeId);
+    const newNodes = { ...oldTree.nodes };
+    delete newNodes[lastNodeId];
+    newNodes[parentId] = { ...parent, childrenIds: newChildrenIds };
+
+    // 新的路径去掉最后一个节点
+    const newPath = path.slice(0, -1);
+    const newTree = {
+      ...oldTree,
+      nodes: newNodes,
+      currentPath: newPath,
+    };
+
+    const newTrees = { ...state.trees, [state.activeId]: newTree };
+    set({ trees: newTrees, tree: newTree });
+    // 持久化修改
+    saveConversationTree(state.activeId, newTree);
+  },
+
 
   editMessage: (nodeId, newContent) => {
     const state = get();

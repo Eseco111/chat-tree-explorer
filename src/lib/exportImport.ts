@@ -73,6 +73,14 @@ export async function exportConversationToClipboard(id: string, meta: Conversati
 
 /** 通用文本导入逻辑：清洗、解析、校验，并创建全新对话（不覆盖已有） */
 async function processImportText(raw: string): Promise<{ success: boolean; error?: string }> {
+
+  const MAX_SAFE_LENGTH = 3000;
+  if (raw.length > MAX_SAFE_LENGTH) {
+    return {
+      success: false,
+      error: `文本过长（${raw.length} 字符），微信可能已截断。请尝试分段复制或使用电脑端导入。`,
+    };
+  }
   try {
     // 1. 去除 BOM 头和首尾空格
     let clean = raw.replace(/^\uFEFF/, '').trim();

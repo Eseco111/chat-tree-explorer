@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { useTreeStore } from '../store/useTreeStore';
 import type { ConversationMeta, ConversationTree } from '../types';
 import {
   loadConversationTree,
@@ -61,7 +62,6 @@ export function importConversation(file: File): Promise<boolean> {
         await saveConversationTree(newId, tree);
 
         // 动态导入 store，避免循环依赖
-        const { useTreeStore } = await import('../store/useTreeStore');
         const storeState = useTreeStore.getState();
 
         // 更新 store 中的 meta 和 trees 缓存

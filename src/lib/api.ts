@@ -19,7 +19,8 @@ export function getActiveClient(): OpenAI | null {
 
 export async function* streamChat(
   messages: ChatCompletionMessageParam[],
-  model: string
+  model: string,
+  options?: { temperature?: number }  // 新增可选参数
 ): AsyncGenerator<string> {
   if (!activeClient) {
     throw new Error('API 客户端未初始化');
@@ -28,6 +29,7 @@ export async function* streamChat(
     model,
     messages,
     stream: true,
+    temperature: options?.temperature ?? 0.3,  // 默认 0.3，减少随机性
   });
   for await (const chunk of stream) {
     const delta = chunk.choices[0]?.delta?.content;

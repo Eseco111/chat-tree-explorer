@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-// @ts-ignore
 import rehypeRaw from 'rehype-raw';        // 修正导入
 import rehypeSanitize from 'rehype-sanitize';
 
